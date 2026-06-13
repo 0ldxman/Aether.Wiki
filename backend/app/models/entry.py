@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import ARRAY, Computed, Date, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import ARRAY, Date, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,9 +19,7 @@ class Entry(Base):
     title: Mapped[str] = mapped_column(String(255))
     content: Mapped[str | None] = mapped_column(Text)
     properties: Mapped[dict] = mapped_column(JSONB, server_default="{}")
-    timeline_date: Mapped[date | None] = mapped_column(
-        Date, Computed("(properties->>'date')::date", persisted=True)
-    )
+    timeline_date: Mapped[date | None] = mapped_column(Date)
     visibility: Mapped[str] = mapped_column(String(20), server_default="public")
     visibility_orgs: Mapped[list[uuid.UUID]] = mapped_column(
         ARRAY(UUID(as_uuid=True)), server_default="{}"

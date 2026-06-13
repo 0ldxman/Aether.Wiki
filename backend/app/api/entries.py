@@ -11,7 +11,7 @@ from app.models.entry import Entry
 from app.models.link import Link
 from app.schemas.entry import EntryCreate, EntryListItem, EntryRead, EntryUpdate
 from app.services.access import UserContext, can_edit, can_view
-from app.services.content import extract_properties
+from app.services.content import extract_properties, extract_timeline_date
 from app.services.links import sync_wikilinks
 
 router = APIRouter(prefix="/entries", tags=["entries"])
@@ -85,12 +85,14 @@ async def create_entry(
     if not can_edit(ctx):
         raise HTTPException(status_code=403, detail="Not allowed")
 
+    properties = extract_properties(payload.content)
     entry = Entry(
         type=payload.type,
         slug=payload.slug or slugify(payload.title),
         title=payload.title,
         content=payload.content,
-        properties=extract_properties(payload.content),
+        properties=properties,
+        timeline_date=extract_timeline_date(properties),
         visibility=payload.visibility,
         visibility_orgs=payload.visibility_orgs,
         created_by=ctx.user_id,
@@ -129,6 +131,7 @@ async def update_entry(
 
     if content_changed:
         entry.properties = extract_properties(entry.content)
+        entry.timeline_date = extract_timeline_date(entry.properties)
 
     try:
         await db.flush()

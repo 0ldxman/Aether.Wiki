@@ -60,12 +60,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("'{}'::jsonb"),
         ),
-        sa.Column(
-            "timeline_date",
-            sa.Date(),
-            sa.Computed("(properties->>'date')::date", persisted=True),
-            nullable=True,
-        ),
+        sa.Column("timeline_date", sa.Date(), nullable=True),
         sa.Column(
             "visibility",
             sa.String(length=20),

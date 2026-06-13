@@ -1,4 +1,5 @@
 import re
+from datetime import date, datetime
 
 import frontmatter
 from slugify import slugify
@@ -12,6 +13,25 @@ def extract_properties(content: str | None) -> dict:
         return {}
     post = frontmatter.loads(content)
     return dict(post.metadata)
+
+
+def extract_timeline_date(properties: dict) -> date | None:
+    """Pull the `date` property out as a date, if present and valid.
+
+    YAML parses unquoted dates (e.g. `date: 2187-03-14`) as date/datetime
+    objects, but quoted dates come through as plain strings - handle both.
+    """
+    value = properties.get("date")
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            return None
+    return None
 
 
 def extract_wikilink_slugs(content: str | None) -> set[str]:
