@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import yaml from "js-yaml"
 import { ChevronDownIcon } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
@@ -30,6 +31,7 @@ import { cn } from "@workspace/ui/lib/utils"
 import { ApiError, apiRequest } from "@/lib/api/client"
 import type { EntryRead, Visibility } from "@/lib/api/types"
 import { CATEGORIES } from "@/lib/categories"
+import { parseFrontmatter, stringifyFrontmatter } from "@/lib/frontmatter"
 import { markdownProseClassName } from "@/lib/markdown"
 import { MarkdownContent } from "@/components/markdown-content"
 import { VISIBILITY_META } from "@/lib/visibility"
@@ -41,7 +43,7 @@ const VISIBILITY_OPTIONS: { value: Visibility; label: string }[] = [
 ]
 
 const inputClassName =
-  "w-full border border-neutral-700/80 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 focus:border-amber-500/50 focus:outline-none"
+  "w-full border border-input bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 focus:border-amber-500/50 focus:outline-none"
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -69,12 +71,22 @@ export function EntryForm({
       ? initialType
       : CATEGORIES[0].type)
 
+  const initialFrontmatter = parseFrontmatter(entry?.content ?? "")
+  const { date: initialDate, image: initialImage, ...initialExtra } = initialFrontmatter.data
+
   const [type, setType] = useState(defaultType)
   const [title, setTitle] = useState(entry?.title ?? "")
   const [slug, setSlug] = useState(entry?.slug ?? "")
   const [visibility, setVisibility] = useState<Visibility>(entry?.visibility ?? "public")
   const [visibilityOrgs, setVisibilityOrgs] = useState(entry?.visibility_orgs.join(", ") ?? "")
-  const [content, setContent] = useState(entry?.content ?? "")
+  const [body, setBody] = useState(initialFrontmatter.body)
+  const [timelineDate, setTimelineDate] = useState(
+    typeof initialDate === "string" ? initialDate : ""
+  )
+  const [image, setImage] = useState(typeof initialImage === "string" ? initialImage : "")
+  const [extraYaml, setExtraYaml] = useState(
+    Object.keys(initialExtra).length > 0 ? yaml.dump(initialExtra, { lineWidth: -1 }) : ""
+  )
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -84,7 +96,27 @@ export function EntryForm({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     setError(null)
+
+    let extraProperties: Record<string, unknown> = {}
+    if (extraYaml.trim()) {
+      try {
+        const parsed = yaml.load(extraYaml)
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error("not an object")
+        }
+        extraProperties = parsed as Record<string, unknown>
+      } catch {
+        setError("Дополнительные свойства должны быть валидным YAML-объектом.")
+        return
+      }
+    }
+
     setSubmitting(true)
+
+    const content = stringifyFrontmatter(
+      { ...extraProperties, date: timelineDate.trim() || undefined, image: image.trim() || undefined },
+      body
+    )
 
     const payload = {
       type,
@@ -120,8 +152,8 @@ export function EntryForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Card className="gap-0 rounded-none border-neutral-700/80 bg-neutral-900/40 py-0 ring-0">
-        <CardHeader className="flex flex-row items-center justify-between gap-2 border-b border-neutral-800 px-6 py-4">
+      <Card className="gap-0 py-0">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 border-b border-border px-6 py-4">
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-neutral-500">
             Параметры записи
           </div>
@@ -179,7 +211,26 @@ export function EntryForm({
             />
           </Field>
 
-          <Field label="Контент (Markdown + YAML frontmatter)">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Дата события (для таймлайна, ГГГГ-ММ-ДД)">
+              <input
+                value={timelineDate}
+                onChange={(e) => setTimelineDate(e.target.value)}
+                placeholder="2187-03-14"
+                className={inputClassName}
+              />
+            </Field>
+            <Field label="Изображение (URL баннера)">
+              <input
+                value={image}
+                onChange={(e) => setImage(e.target.value)}
+                placeholder="https://..."
+                className={inputClassName}
+              />
+            </Field>
+          </div>
+
+          <Field label="Контент (Markdown)">
             <Tabs defaultValue="editor">
               <TabsList variant="line">
                 <TabsTrigger value="editor">Редактор</TabsTrigger>
@@ -187,8 +238,8 @@ export function EntryForm({
               </TabsList>
               <TabsContent value="editor" className="mt-2">
                 <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
                   rows={18}
                   className={`${inputClassName} font-mono`}
                 />
@@ -197,11 +248,11 @@ export function EntryForm({
                 <div
                   className={cn(
                     markdownProseClassName,
-                    "min-h-[28rem] border border-neutral-700/80 bg-neutral-900/60 px-3 py-2"
+                    "min-h-[28rem] border border-input bg-neutral-900/60 px-3 py-2"
                   )}
                 >
-                  {content.trim() ? (
-                    <MarkdownContent content={content} />
+                  {body.trim() ? (
+                    <MarkdownContent content={body} />
                   ) : (
                     <p className="text-neutral-500">Нет содержимого для предпросмотра.</p>
                   )}
@@ -236,11 +287,20 @@ export function EntryForm({
                   className={inputClassName}
                 />
               </Field>
+              <Field label="Дополнительные свойства (YAML)">
+                <textarea
+                  value={extraYaml}
+                  onChange={(e) => setExtraYaml(e.target.value)}
+                  rows={4}
+                  placeholder={"discord_role_id: \"...\"\nfaction: \"...\""}
+                  className={`${inputClassName} font-mono`}
+                />
+              </Field>
             </CollapsibleContent>
           </Collapsible>
         </CardContent>
 
-        <CardFooter className="flex items-center justify-end gap-3 rounded-none border-t border-neutral-800 bg-transparent px-6 py-4">
+        <CardFooter className="flex items-center justify-end gap-3 rounded-none border-t border-border bg-transparent px-6 py-4">
           {error ? <p className="mr-auto text-sm text-red-400">[ERROR]: {error}</p> : null}
           <Button type="submit" disabled={submitting} className="px-6 tracking-widest">
             {submitting ? "СОХРАНЕНИЕ..." : mode === "create" ? "[ СОЗДАТЬ ЗАПИСЬ ]" : "[ СОХРАНИТЬ ]"}

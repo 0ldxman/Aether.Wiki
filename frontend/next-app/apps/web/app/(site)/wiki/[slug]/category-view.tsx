@@ -11,14 +11,16 @@ export async function CategoryView({ category }: { category: (typeof CATEGORIES)
     serverFetch<MeResponse>("/api/auth/me"),
   ])
   const canEdit = user?.global_role === "editor" || user?.global_role === "admin"
+  const Icon = category.icon
 
   return (
     <div className="flex flex-col gap-8">
       <div className="text-center">
-        <h1 className="text-3xl font-bold tracking-[0.3em] text-amber-500 sm:text-4xl">
+        <h1 className="flex items-center justify-center gap-3 text-3xl font-bold tracking-[0.3em] text-amber-500 sm:text-4xl">
+          <Icon className="size-7 sm:size-8" />
           {category.label}
         </h1>
-        <p className="mt-1 text-xs tracking-[0.3em] text-neutral-500">CATEGORY ARCHIVE</p>
+        <p className="mt-1 text-xs tracking-[0.3em] text-muted-foreground">CATEGORY ARCHIVE</p>
       </div>
       {canEdit ? (
         <div className="flex justify-end">

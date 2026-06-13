@@ -3,6 +3,16 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 
+import { Badge } from "@workspace/ui/components/badge"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@workspace/ui/components/table"
+import { ToggleGroup, ToggleGroupItem } from "@workspace/ui/components/toggle-group"
 import { cn } from "@workspace/ui/lib/utils"
 
 import type { EntryListItem } from "@/lib/api/types"
@@ -20,7 +30,7 @@ function EntryCard({ entry }: { entry: EntryListItem }) {
   return (
     <Link
       href={`/wiki/${entry.slug ?? entry.id}`}
-      className="group flex flex-col border border-neutral-700/80 bg-neutral-900/40 transition-colors hover:border-amber-500/50"
+      className="group flex flex-col border border-border bg-card transition-colors hover:border-amber-500/50"
     >
       {image ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -34,14 +44,16 @@ function EntryCard({ entry }: { entry: EntryListItem }) {
       )}
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-center justify-between text-[10px] tracking-widest">
-          <span className="text-neutral-500">{entry.timeline_date ?? "—"}</span>
-          <span className={visibility.className}>{visibility.label}</span>
+          <span className="text-muted-foreground">{entry.timeline_date ?? "—"}</span>
+          <Badge variant="outline" className={cn("uppercase tracking-widest", visibility.className)}>
+            {visibility.label}
+          </Badge>
         </div>
-        <h3 className="text-sm font-medium text-neutral-200 transition-colors group-hover:text-amber-400">
+        <h3 className="text-sm font-medium text-foreground transition-colors group-hover:text-amber-400">
           {entry.title}
         </h3>
         {entry.excerpt ? (
-          <p className="line-clamp-3 text-xs text-neutral-500">{entry.excerpt}</p>
+          <p className="line-clamp-3 text-xs text-muted-foreground">{entry.excerpt}</p>
         ) : null}
       </div>
     </Link>
@@ -50,37 +62,47 @@ function EntryCard({ entry }: { entry: EntryListItem }) {
 
 function EntryTable({ entries }: { entries: EntryListItem[] }) {
   return (
-    <div className="overflow-x-auto border border-neutral-700/80">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-neutral-700/80 bg-neutral-900/60 text-[10px] uppercase tracking-widest text-neutral-500">
-          <tr>
-            <th className="px-4 py-2 font-normal">Название</th>
-            <th className="px-4 py-2 font-normal">Дата</th>
-            <th className="px-4 py-2 font-normal">Доступ</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-neutral-800">
+    <div className="border border-border">
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="px-4 text-[10px] font-normal uppercase tracking-widest text-muted-foreground">
+              Название
+            </TableHead>
+            <TableHead className="px-4 text-[10px] font-normal uppercase tracking-widest text-muted-foreground">
+              Дата
+            </TableHead>
+            <TableHead className="px-4 text-[10px] font-normal uppercase tracking-widest text-muted-foreground">
+              Доступ
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {entries.map((entry) => {
             const visibility = VISIBILITY_META[entry.visibility]
             return (
-              <tr key={entry.id} className="transition-colors hover:bg-neutral-900/60">
-                <td className="px-4 py-2">
+              <TableRow key={entry.id}>
+                <TableCell className="px-4 py-2 whitespace-normal">
                   <Link
                     href={`/wiki/${entry.slug ?? entry.id}`}
-                    className="text-neutral-200 transition-colors hover:text-amber-400"
+                    className="text-foreground transition-colors hover:text-amber-400"
                   >
                     {entry.title}
                   </Link>
-                </td>
-                <td className="px-4 py-2 text-neutral-500">{entry.timeline_date ?? "—"}</td>
-                <td className={cn("px-4 py-2 text-xs tracking-widest", visibility.className)}>
-                  {visibility.label}
-                </td>
-              </tr>
+                </TableCell>
+                <TableCell className="px-4 py-2 text-muted-foreground">
+                  {entry.timeline_date ?? "—"}
+                </TableCell>
+                <TableCell className="px-4 py-2">
+                  <Badge variant="outline" className={cn("uppercase tracking-widest", visibility.className)}>
+                    {visibility.label}
+                  </Badge>
+                </TableCell>
+              </TableRow>
             )
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -105,38 +127,28 @@ export function EntryBrowser({ entries }: { entries: EntryListItem[] }) {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="ПОИСК ПО АРХИВУ..."
-          className="w-full max-w-sm border border-neutral-700/80 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:border-amber-500/50 focus:outline-none"
+          className="w-full max-w-sm border border-input bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:border-amber-500/50 focus:outline-none"
         />
-        <div className="flex items-center gap-2 text-xs tracking-widest">
-          <button
-            onClick={() => setView("cards")}
-            className={cn(
-              "border px-3 py-1.5 transition-colors",
-              view === "cards"
-                ? "border-amber-500/60 text-amber-400"
-                : "border-neutral-700/80 text-neutral-500 hover:text-neutral-300"
-            )}
-          >
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          value={view}
+          onValueChange={(value) => value && setView(value as "cards" | "table")}
+          className="text-xs tracking-widest"
+        >
+          <ToggleGroupItem value="cards" className="px-3">
             КАРТОЧКИ
-          </button>
-          <button
-            onClick={() => setView("table")}
-            className={cn(
-              "border px-3 py-1.5 transition-colors",
-              view === "table"
-                ? "border-amber-500/60 text-amber-400"
-                : "border-neutral-700/80 text-neutral-500 hover:text-neutral-300"
-            )}
-          >
+          </ToggleGroupItem>
+          <ToggleGroupItem value="table" className="px-3">
             ТАБЛИЦА
-          </button>
-        </div>
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
-      <p className="text-xs tracking-widest text-neutral-500">НАЙДЕНО ЗАПИСЕЙ: {filtered.length}</p>
+      <p className="text-xs tracking-widest text-muted-foreground">НАЙДЕНО ЗАПИСЕЙ: {filtered.length}</p>
 
       {filtered.length === 0 ? (
-        <p className="border border-neutral-700/80 bg-neutral-900/40 p-6 text-sm text-neutral-500">
+        <p className="border border-border bg-card p-6 text-sm text-muted-foreground">
           Записи не найдены.
         </p>
       ) : view === "cards" ? (
