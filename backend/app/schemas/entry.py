@@ -49,3 +49,4 @@ class EntryListItem(BaseModel):
     title: str
     visibility: Visibility
     timeline_date: date | None
+    properties: dict

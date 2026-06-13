@@ -16,6 +16,7 @@ export interface EntryListItem {
   title: string
   visibility: Visibility
   timeline_date: string | null
+  properties: Record<string, unknown>
 }
 
 export interface EntryRead extends EntryListItem {

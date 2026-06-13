@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { cn } from "@workspace/ui/lib/utils"
 
+import { HudPanel } from "@/components/hud-panel"
 import { serverFetch } from "@/lib/api/server"
 import type { MeResponse } from "@/lib/api/types"
 
@@ -73,11 +74,11 @@ function getClearanceInfo(user: MeResponse | null): ClearanceInfo {
 function TerminalField({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="w-24 shrink-0 text-emerald-500/50">{label}:</span>
-      <span className="flex-1 truncate border-b border-dashed border-emerald-500/30 pb-1 text-emerald-300">
+      <span className="w-24 shrink-0 text-neutral-500">{label}:</span>
+      <span className="flex-1 truncate border-b border-dashed border-amber-500/30 pb-1 text-neutral-200">
         {value}
       </span>
-      <span className="animate-pulse text-emerald-400">█</span>
+      <span className="animate-pulse text-amber-500">█</span>
     </div>
   )
 }
@@ -88,13 +89,19 @@ export default async function HomePage() {
   const granted = clearance.access === "GRANTED"
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black p-4 font-mono text-emerald-400">
-      <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(16,185,129,0.05)_0px,rgba(16,185,129,0.05)_1px,transparent_1px,transparent_3px)]" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-neutral-950 p-4 font-mono text-neutral-300">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:48px_48px]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-neutral-950" />
 
-      <div className="relative w-full max-w-2xl border border-emerald-500/30 bg-black/80 p-6 shadow-[0_0_40px_-10px_rgba(16,185,129,0.4)] sm:p-10">
+      <HudPanel
+        label="AETHER // ACCESS TERMINAL"
+        className="relative w-full max-w-2xl shadow-[0_0_60px_-20px_rgba(245,158,11,0.25)] sm:p-2"
+      >
         <div className="space-y-1 text-center">
-          <h1 className="text-4xl font-bold tracking-[0.3em] sm:text-5xl">AETHER</h1>
-          <p className="text-xs tracking-[0.2em] text-emerald-500/60 sm:text-sm">
+          <h1 className="text-4xl font-bold tracking-[0.3em] text-amber-500 sm:text-5xl">
+            AETHER
+          </h1>
+          <p className="text-xs tracking-[0.2em] text-neutral-500 sm:text-sm">
             ECLIPSE PROTOCOL // SECURE ACCESS TERMINAL
           </p>
         </div>
@@ -104,20 +111,20 @@ export default async function HomePage() {
           <TerminalField label="PASSWORD" value="********" />
         </div>
 
-        <div className="mt-8 space-y-2 border-t border-emerald-500/20 pt-6 text-sm">
+        <div className="mt-8 space-y-2 border-t border-neutral-700/60 pt-6 text-sm">
           <p
             className={cn(
               "text-lg font-bold tracking-widest",
-              granted ? "text-emerald-400" : "text-red-500"
+              granted ? "text-amber-500" : "text-red-500"
             )}
           >
             {granted ? "ACCESS GRANTED" : "ACCESS RESTRICTED"}
           </p>
-          {clearance.greeting ? <p>{clearance.greeting}</p> : null}
+          {clearance.greeting ? <p className="text-neutral-300">{clearance.greeting}</p> : null}
           {clearance.lines.map((line) => (
             <p
               key={line.text}
-              className={line.tone === "warning" ? "text-amber-400" : "text-emerald-400/80"}
+              className={line.tone === "warning" ? "text-amber-400" : "text-neutral-400"}
             >
               {line.text}
             </p>
@@ -128,20 +135,20 @@ export default async function HomePage() {
           {user ? (
             <Link
               href="/wiki"
-              className="border border-emerald-500/40 px-6 py-2 text-sm tracking-widest transition-colors hover:bg-emerald-500/10"
+              className="border border-amber-500/40 px-6 py-2 text-sm tracking-widest text-amber-400 transition-colors hover:bg-amber-500/10"
             >
               [ PROCEED ]
             </Link>
           ) : (
             <a
               href={`${BACKEND_URL}/api/auth/discord/login`}
-              className="border border-emerald-500/40 px-6 py-2 text-sm tracking-widest transition-colors hover:bg-emerald-500/10"
+              className="border border-amber-500/40 px-6 py-2 text-sm tracking-widest text-amber-400 transition-colors hover:bg-amber-500/10"
             >
               [ AUTHENTICATE VIA DISCORD ]
             </a>
           )}
         </div>
-      </div>
+      </HudPanel>
     </div>
   )
 }
