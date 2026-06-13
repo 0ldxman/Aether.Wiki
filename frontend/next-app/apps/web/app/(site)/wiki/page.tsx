@@ -1,4 +1,3 @@
-import { CategoryNav } from "@/components/category-nav"
 import { Timeline } from "@/components/timeline"
 import { serverFetch } from "@/lib/api/server"
 import type { EntryListItem } from "@/lib/api/types"
@@ -9,7 +8,7 @@ export default async function WikiPage() {
   return (
     <div className="flex flex-col gap-10">
       <section className="space-y-4">
-        <div>
+        <div className="text-center">
           <h1 className="text-3xl font-bold tracking-[0.3em] text-amber-500 sm:text-4xl">
             ECLIPSE PROTOCOL
           </h1>
@@ -20,7 +19,6 @@ export default async function WikiPage() {
           локациям, фракциям и фигурам, задействованным в протоколе. Доступ к материалам
           определяется уровнем допуска текущей сессии.
         </p>
-        <CategoryNav />
       </section>
 
       <section>

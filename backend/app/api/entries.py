@@ -11,10 +11,23 @@ from app.models.entry import Entry
 from app.models.link import Link
 from app.schemas.entry import EntryCreate, EntryListItem, EntryRead, EntryUpdate
 from app.services.access import UserContext, can_edit, can_view
-from app.services.content import extract_properties, extract_timeline_date
+from app.services.content import extract_excerpt, extract_properties, extract_timeline_date
 from app.services.links import sync_wikilinks
 
 router = APIRouter(prefix="/entries", tags=["entries"])
+
+
+def _to_list_item(entry: Entry) -> EntryListItem:
+    return EntryListItem(
+        id=entry.id,
+        type=entry.type,
+        slug=entry.slug,
+        title=entry.title,
+        visibility=entry.visibility,
+        timeline_date=entry.timeline_date,
+        properties=entry.properties,
+        excerpt=extract_excerpt(entry.content),
+    )
 
 
 def _visibility_filter(ctx: UserContext):
@@ -64,7 +77,7 @@ async def list_entries(
     query = query.order_by(Entry.title).offset(offset).limit(limit)
 
     result = await db.execute(query)
-    return result.scalars().all()
+    return [_to_list_item(entry) for entry in result.scalars().all()]
 
 
 @router.get("/{id_or_slug}", response_model=EntryRead)
@@ -183,4 +196,4 @@ async def get_backlinks(
         query = query.where(visibility_filter)
 
     result = await db.execute(query)
-    return result.scalars().all()
+    return [_to_list_item(entry) for entry in result.scalars().all()]

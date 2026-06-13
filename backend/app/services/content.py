@@ -51,6 +51,19 @@ def extract_timeline_date(properties: dict) -> date | None:
     return None
 
 
+def extract_excerpt(content: str | None, length: int = 200) -> str:
+    """Return a plain-text preview of the entry body, frontmatter stripped."""
+    if not content:
+        return ""
+    body = frontmatter.loads(content).content
+    text = WIKILINK_RE.sub(lambda m: m.group(1).split("->")[-1].strip(), body)
+    text = re.sub(r"[#*_`>]+", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) <= length:
+        return text
+    return text[:length].rsplit(" ", 1)[0] + "…"
+
+
 def extract_wikilink_slugs(content: str | None) -> set[str]:
     """Extract slugified link targets from [[Target]] / [[Target->Display]] wikilinks."""
     if not content:

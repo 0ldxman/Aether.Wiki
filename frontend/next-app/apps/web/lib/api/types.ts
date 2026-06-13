@@ -9,7 +9,7 @@ export interface MeResponse {
   organization_ids: string[]
 }
 
-export interface EntryListItem {
+interface EntryBase {
   id: string
   type: string
   slug: string | null
@@ -19,9 +19,12 @@ export interface EntryListItem {
   properties: Record<string, unknown>
 }
 
-export interface EntryRead extends EntryListItem {
+export interface EntryListItem extends EntryBase {
+  excerpt: string
+}
+
+export interface EntryRead extends EntryBase {
   content: string | null
-  properties: Record<string, unknown>
   visibility_orgs: string[]
   created_by: string | null
   created_at: string

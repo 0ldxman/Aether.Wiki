@@ -3,6 +3,7 @@ from datetime import date, datetime
 from slugify import slugify
 
 from app.services.content import (
+    extract_excerpt,
     extract_properties,
     extract_timeline_date,
     extract_wikilink_slugs,
@@ -82,3 +83,26 @@ def test_extract_timeline_date_invalid_string():
 
 def test_extract_timeline_date_missing():
     assert extract_timeline_date({}) is None
+
+
+def test_extract_excerpt_strips_frontmatter_and_markdown():
+    content = """---
+date: "2187-03-14"
+---
+# Title
+
+Body **text** with [[Protocol Apollo->the protocol]] and `code`.
+"""
+    assert extract_excerpt(content) == "Title Body text with the protocol and code."
+
+
+def test_extract_excerpt_truncates_long_text():
+    content = "word " * 100
+    excerpt = extract_excerpt(content, length=20)
+    assert len(excerpt) <= 21
+    assert excerpt.endswith("…")
+
+
+def test_extract_excerpt_empty():
+    assert extract_excerpt(None) == ""
+    assert extract_excerpt("") == ""
