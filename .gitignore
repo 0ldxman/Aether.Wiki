@@ -1,0 +1,14 @@
+# Python
+**/__pycache__/
+*.pyc
+backend/.venv/
+backend/.pytest_cache/
+
+# env files (keep .env.example templates)
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# misc
+.DS_Store
