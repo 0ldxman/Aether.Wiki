@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation"
 
+import { DeleteEntryDialog } from "@/components/delete-entry-dialog"
 import { EntryForm } from "@/components/entry-form"
 import { HudPanel } from "@/components/hud-panel"
 import { serverFetch } from "@/lib/api/server"
@@ -33,9 +34,16 @@ export default async function EditEntryPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="text-center">
+      <div className="relative text-center">
         <h1 className="text-2xl font-bold tracking-[0.3em] text-amber-500">РЕДАКТИРОВАНИЕ</h1>
         <p className="mt-1 text-xs tracking-[0.3em] text-neutral-500">{entry.title}</p>
+        <div className="absolute right-0 top-0">
+          <DeleteEntryDialog
+            entryId={entry.id}
+            title={entry.title}
+            redirectTo={`/wiki/${entry.type}`}
+          />
+        </div>
       </div>
       <EntryForm mode="edit" entry={entry} />
     </div>

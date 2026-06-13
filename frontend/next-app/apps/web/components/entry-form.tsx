@@ -2,10 +2,37 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { ChevronDownIcon } from "lucide-react"
+
+import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@workspace/ui/components/card"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@workspace/ui/components/collapsible"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
+import { cn } from "@workspace/ui/lib/utils"
 
 import { ApiError, apiRequest } from "@/lib/api/client"
 import type { EntryRead, Visibility } from "@/lib/api/types"
 import { CATEGORIES } from "@/lib/categories"
+import { markdownProseClassName } from "@/lib/markdown"
+import { MarkdownContent } from "@/components/markdown-content"
+import { VISIBILITY_META } from "@/lib/visibility"
 
 const VISIBILITY_OPTIONS: { value: Visibility; label: string }[] = [
   { value: "public", label: "PUBLIC — доступно всем" },
@@ -51,6 +78,9 @@ export function EntryForm({
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  const categoryLabel = CATEGORIES.find((category) => category.type === type)?.label ?? type
+  const visibilityMeta = VISIBILITY_META[visibility]
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     setError(null)
@@ -89,81 +119,134 @@ export function EntryForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-6 border border-neutral-700/80 bg-neutral-900/40 p-6"
-    >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Категория">
-          <select value={type} onChange={(e) => setType(e.target.value)} className={inputClassName}>
-            {CATEGORIES.map((category) => (
-              <option key={category.type} value={category.type}>
-                {category.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Уровень доступа">
-          <select
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value as Visibility)}
-            className={inputClassName}
-          >
-            {VISIBILITY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
+    <form onSubmit={handleSubmit}>
+      <Card className="gap-0 rounded-none border-neutral-700/80 bg-neutral-900/40 py-0 ring-0">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 border-b border-neutral-800 px-6 py-4">
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-neutral-500">
+            Параметры записи
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="uppercase tracking-widest text-neutral-300">
+              {categoryLabel}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={cn("uppercase tracking-widest", visibilityMeta.className)}
+            >
+              {visibilityMeta.label}
+            </Badge>
+          </div>
+        </CardHeader>
 
-      <Field label="Название">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-          className={inputClassName}
-        />
-      </Field>
+        <CardContent className="flex flex-col gap-6 px-6 py-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Категория">
+              <Select value={type} onValueChange={setType}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((category) => (
+                    <SelectItem key={category.type} value={category.type}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Уровень доступа">
+              <Select value={visibility} onValueChange={(value) => setVisibility(value as Visibility)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {VISIBILITY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
 
-      <Field label="Slug (необязательно — генерируется из названия)">
-        <input
-          value={slug}
-          onChange={(e) => setSlug(e.target.value)}
-          placeholder="auto"
-          className={inputClassName}
-        />
-      </Field>
+          <Field label="Название">
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              className={inputClassName}
+            />
+          </Field>
 
-      <Field label="Доступ для организаций (UUID через запятую)">
-        <input
-          value={visibilityOrgs}
-          onChange={(e) => setVisibilityOrgs(e.target.value)}
-          className={inputClassName}
-        />
-      </Field>
+          <Field label="Контент (Markdown + YAML frontmatter)">
+            <Tabs defaultValue="editor">
+              <TabsList variant="line">
+                <TabsTrigger value="editor">Редактор</TabsTrigger>
+                <TabsTrigger value="preview">Превью</TabsTrigger>
+              </TabsList>
+              <TabsContent value="editor" className="mt-2">
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  rows={18}
+                  className={`${inputClassName} font-mono`}
+                />
+              </TabsContent>
+              <TabsContent value="preview" className="mt-2">
+                <div
+                  className={cn(
+                    markdownProseClassName,
+                    "min-h-[28rem] border border-neutral-700/80 bg-neutral-900/60 px-3 py-2"
+                  )}
+                >
+                  {content.trim() ? (
+                    <MarkdownContent content={content} />
+                  ) : (
+                    <p className="text-neutral-500">Нет содержимого для предпросмотра.</p>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </Field>
 
-      <Field label="Контент (Markdown + YAML frontmatter)">
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          rows={18}
-          className={`${inputClassName} font-mono`}
-        />
-      </Field>
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="group/collapsible flex items-center gap-2 text-[10px] uppercase tracking-widest text-neutral-500 transition-colors hover:text-amber-400"
+              >
+                <ChevronDownIcon className="size-3.5 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                Дополнительные параметры
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4 flex flex-col gap-4">
+              <Field label="Slug (необязательно — генерируется из названия)">
+                <input
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder="auto"
+                  className={inputClassName}
+                />
+              </Field>
+              <Field label="Доступ для организаций (UUID через запятую)">
+                <input
+                  value={visibilityOrgs}
+                  onChange={(e) => setVisibilityOrgs(e.target.value)}
+                  className={inputClassName}
+                />
+              </Field>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
 
-      {error ? <p className="text-sm text-red-400">[ERROR]: {error}</p> : null}
-
-      <div className="flex justify-end gap-3">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="border border-amber-500/40 px-6 py-2 text-sm tracking-widest text-amber-400 transition-colors hover:bg-amber-500/10 disabled:opacity-50"
-        >
-          {submitting ? "СОХРАНЕНИЕ..." : mode === "create" ? "[ СОЗДАТЬ ЗАПИСЬ ]" : "[ СОХРАНИТЬ ]"}
-        </button>
-      </div>
+        <CardFooter className="flex items-center justify-end gap-3 rounded-none border-t border-neutral-800 bg-transparent px-6 py-4">
+          {error ? <p className="mr-auto text-sm text-red-400">[ERROR]: {error}</p> : null}
+          <Button type="submit" disabled={submitting} className="px-6 tracking-widest">
+            {submitting ? "СОХРАНЕНИЕ..." : mode === "create" ? "[ СОЗДАТЬ ЗАПИСЬ ]" : "[ СОХРАНИТЬ ]"}
+          </Button>
+        </CardFooter>
+      </Card>
     </form>
   )
 }
