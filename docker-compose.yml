@@ -38,7 +38,10 @@ services:
       - "8000:8000"
 
   frontend:
-    build: ./frontend/next-app
+    build:
+      context: ./frontend/next-app
+      args:
+        BACKEND_URL: http://backend:8000
     restart: unless-stopped
     environment:
       BACKEND_URL: http://backend:8000
