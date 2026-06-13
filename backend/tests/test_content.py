@@ -23,6 +23,17 @@ Body text.
     assert props["date"] == "2187-03-14"
 
 
+def test_extract_properties_converts_unquoted_date_to_iso_string():
+    content = """---
+date: 2187-03-11
+---
+# Title
+"""
+    props = extract_properties(content)
+    assert props["date"] == "2187-03-11"
+    assert isinstance(props["date"], str)
+
+
 def test_extract_properties_without_frontmatter():
     assert extract_properties("# Just a heading\n\nbody") == {}
 

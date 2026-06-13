@@ -7,12 +7,29 @@ from slugify import slugify
 WIKILINK_RE = re.compile(r"\[\[(.+?)\]\]")
 
 
+def _json_safe(value):
+    """Recursively convert YAML-parsed values into JSON-serializable equivalents.
+
+    PyYAML parses unquoted dates/datetimes into `date`/`datetime` objects,
+    which the JSONB column's default JSON serializer can't handle.
+    """
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {key: _json_safe(v) for key, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(v) for v in value]
+    return value
+
+
 def extract_properties(content: str | None) -> dict:
     """Parse YAML frontmatter from markdown content into a properties dict."""
     if not content:
         return {}
     post = frontmatter.loads(content)
-    return dict(post.metadata)
+    return {key: _json_safe(value) for key, value in post.metadata.items()}
 
 
 def extract_timeline_date(properties: dict) -> date | None:
