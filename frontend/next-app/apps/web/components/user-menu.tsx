@@ -6,19 +6,24 @@ import { Button } from "@workspace/ui/components/button"
 
 import type { MeResponse } from "@/lib/api/types"
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? ""
+
 export function UserMenu({ user }: { user: MeResponse | null }) {
   const router = useRouter()
 
   if (!user) {
     return (
       <Button asChild size="sm">
-        <a href="/api/auth/discord/login">Войти через Discord</a>
+        <a href={`${BACKEND_URL}/api/auth/discord/login`}>Войти через Discord</a>
       </Button>
     )
   }
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" })
+    await fetch(`${BACKEND_URL}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    })
     router.refresh()
   }
 
