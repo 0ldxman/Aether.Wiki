@@ -1,8 +1,8 @@
 import Link from "next/link"
 
+import { TerminalWindow } from "@workspace/ui/components/terminal-window"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { HudPanel } from "@/components/hud-panel"
 import { serverFetch } from "@/lib/api/server"
 import type { MeResponse } from "@/lib/api/types"
 
@@ -93,9 +93,9 @@ export default async function HomePage() {
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:48px_48px]" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-neutral-950" />
 
-      <HudPanel
-        label="AETHER // ACCESS TERMINAL"
-        className="relative w-full max-w-2xl shadow-[0_0_60px_-20px_rgba(245,158,11,0.25)] sm:p-2"
+      <TerminalWindow
+        title="AETHER // ACCESS TERMINAL"
+        className="relative w-full max-w-2xl shadow-[0_0_60px_-20px_rgba(245,158,11,0.25)]"
       >
         <div className="space-y-1 text-center">
           <h1 className="text-4xl font-bold tracking-[0.3em] text-amber-500 sm:text-5xl">
@@ -148,7 +148,7 @@ export default async function HomePage() {
             </a>
           )}
         </div>
-      </HudPanel>
+      </TerminalWindow>
     </div>
   )
 }

@@ -1,23 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import yaml from "js-yaml"
-import { ChevronDownIcon } from "lucide-react"
 
-import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@workspace/ui/components/card"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@workspace/ui/components/collapsible"
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+} from "@workspace/ui/components/combobox"
+import { Input } from "@workspace/ui/components/input"
 import {
   Select,
   SelectContent,
@@ -26,14 +20,17 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
+import { Textarea } from "@workspace/ui/components/textarea"
+import { TerminalWindow } from "@workspace/ui/components/terminal-window"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { ApiError, apiRequest } from "@/lib/api/client"
 import type { EntryRead, Visibility } from "@/lib/api/types"
 import { CATEGORIES } from "@/lib/categories"
+import { MarkdownContent } from "@/components/markdown-content"
+import { MarkdownToolbar } from "@/components/markdown-toolbar"
 import { parseFrontmatter, stringifyFrontmatter } from "@/lib/frontmatter"
 import { markdownProseClassName } from "@/lib/markdown"
-import { MarkdownContent } from "@/components/markdown-content"
 import { VISIBILITY_META } from "@/lib/visibility"
 
 const VISIBILITY_OPTIONS: { value: Visibility; label: string }[] = [
@@ -42,13 +39,18 @@ const VISIBILITY_OPTIONS: { value: Visibility; label: string }[] = [
   { value: "restricted", label: "RESTRICTED — по уровню допуска" },
 ]
 
-const inputClassName =
-  "w-full border border-input bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 focus:border-amber-500/50 focus:outline-none"
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  className,
+}: {
+  label: string
+  children: React.ReactNode
+  className?: string
+}) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10px] uppercase tracking-widest text-neutral-500">{label}</label>
+    <div className={cn("flex flex-col gap-1.5", className)}>
+      <label className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</label>
       {children}
     </div>
   )
@@ -64,6 +66,7 @@ export function EntryForm({
   initialType?: string
 }) {
   const router = useRouter()
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const defaultType =
     entry?.type ??
@@ -72,7 +75,7 @@ export function EntryForm({
       : CATEGORIES[0].type)
 
   const initialFrontmatter = parseFrontmatter(entry?.content ?? "")
-  const { date: initialDate, image: initialImage, ...initialExtra } = initialFrontmatter.data
+  const { image: initialImage, tags: initialTags, ...initialExtra } = initialFrontmatter.data
 
   const [type, setType] = useState(defaultType)
   const [title, setTitle] = useState(entry?.title ?? "")
@@ -80,18 +83,36 @@ export function EntryForm({
   const [visibility, setVisibility] = useState<Visibility>(entry?.visibility ?? "public")
   const [visibilityOrgs, setVisibilityOrgs] = useState(entry?.visibility_orgs.join(", ") ?? "")
   const [body, setBody] = useState(initialFrontmatter.body)
-  const [timelineDate, setTimelineDate] = useState(
-    typeof initialDate === "string" ? initialDate : ""
-  )
   const [image, setImage] = useState(typeof initialImage === "string" ? initialImage : "")
+  const [tags, setTags] = useState<string[]>(
+    Array.isArray(initialTags) ? initialTags.map(String) : []
+  )
+  const [tagDraft, setTagDraft] = useState("")
   const [extraYaml, setExtraYaml] = useState(
     Object.keys(initialExtra).length > 0 ? yaml.dump(initialExtra, { lineWidth: -1 }) : ""
   )
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  const categoryLabel = CATEGORIES.find((category) => category.type === type)?.label ?? type
-  const visibilityMeta = VISIBILITY_META[visibility]
+  const slugDisplay = slug.trim() ? slug.trim().toUpperCase() : "NEW"
+  const contentTitle = `ECL:/DTA/${type.toUpperCase()}/${slugDisplay}`
+  const metaTitle = `${contentTitle}::META`
+
+  function commitTagDraft() {
+    const next = tagDraft.trim()
+    setTagDraft("")
+    if (!next || tags.includes(next)) return
+    setTags([...tags, next])
+  }
+
+  function handleTagKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter" || event.key === ",") {
+      event.preventDefault()
+      commitTagDraft()
+    } else if (event.key === "Backspace" && tagDraft === "" && tags.length > 0) {
+      setTags(tags.slice(0, -1))
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -106,7 +127,7 @@ export function EntryForm({
         }
         extraProperties = parsed as Record<string, unknown>
       } catch {
-        setError("Дополнительные свойства должны быть валидным YAML-объектом.")
+        setError("Frontmatter должен быть валидным YAML-объектом.")
         return
       }
     }
@@ -114,7 +135,11 @@ export function EntryForm({
     setSubmitting(true)
 
     const content = stringifyFrontmatter(
-      { ...extraProperties, date: timelineDate.trim() || undefined, image: image.trim() || undefined },
+      {
+        ...extraProperties,
+        image: image.trim() || undefined,
+        tags: tags.length > 0 ? tags : undefined,
+      },
       body
     )
 
@@ -151,28 +176,14 @@ export function EntryForm({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <Card className="gap-0 py-0">
-        <CardHeader className="flex flex-row items-center justify-between gap-2 border-b border-border px-6 py-4">
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-neutral-500">
-            Параметры записи
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="uppercase tracking-widest text-neutral-300">
-              {categoryLabel}
-            </Badge>
-            <Badge
-              variant="outline"
-              className={cn("uppercase tracking-widest", visibilityMeta.className)}
-            >
-              {visibilityMeta.label}
-            </Badge>
-          </div>
-        </CardHeader>
-
-        <CardContent className="flex flex-col gap-6 px-6 py-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Категория">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+        <TerminalWindow title={contentTitle} contentClassName="p-0" className="lg:col-span-2">
+          <div className="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-end">
+            <Field label="Название" className="flex-1">
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
+            </Field>
+            <Field label="Категория" className="sm:w-56">
               <Select value={type} onValueChange={setType}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -186,127 +197,116 @@ export function EntryForm({
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Уровень доступа">
-              <Select value={visibility} onValueChange={(value) => setVisibility(value as Visibility)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {VISIBILITY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
           </div>
 
-          <Field label="Название">
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              className={inputClassName}
-            />
-          </Field>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Дата события (для таймлайна, ГГГГ-ММ-ДД)">
-              <input
-                value={timelineDate}
-                onChange={(e) => setTimelineDate(e.target.value)}
-                placeholder="2187-03-14"
-                className={inputClassName}
-              />
-            </Field>
-            <Field label="Изображение (URL баннера)">
-              <input
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="https://..."
-                className={inputClassName}
-              />
-            </Field>
-          </div>
-
-          <Field label="Контент (Markdown)">
-            <Tabs defaultValue="editor">
-              <TabsList variant="line">
+          <Tabs defaultValue="editor" className="gap-0">
+            <div className="sticky top-16 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card">
+              <MarkdownToolbar textareaRef={textareaRef} onChange={setBody} className="border-b-0" />
+              <TabsList variant="line" className="mr-2">
                 <TabsTrigger value="editor">Редактор</TabsTrigger>
                 <TabsTrigger value="preview">Превью</TabsTrigger>
               </TabsList>
-              <TabsContent value="editor" className="mt-2">
-                <textarea
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  rows={18}
-                  className={`${inputClassName} font-mono`}
-                />
-              </TabsContent>
-              <TabsContent value="preview" className="mt-2">
-                <div
-                  className={cn(
-                    markdownProseClassName,
-                    "min-h-[28rem] border border-input bg-neutral-900/60 px-3 py-2"
-                  )}
-                >
-                  {body.trim() ? (
-                    <MarkdownContent content={body} />
-                  ) : (
-                    <p className="text-neutral-500">Нет содержимого для предпросмотра.</p>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
+            </div>
+            <TabsContent value="editor" className="mt-0">
+              <Textarea
+                ref={textareaRef}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                className="min-h-[32rem] resize-none border-0 font-mono"
+              />
+            </TabsContent>
+            <TabsContent value="preview" className="mt-0">
+              <div className={cn(markdownProseClassName, "min-h-[32rem] p-4")}>
+                {body.trim() ? (
+                  <MarkdownContent content={body} />
+                ) : (
+                  <p className="text-muted-foreground">Нет содержимого для предпросмотра.</p>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </TerminalWindow>
+
+        <TerminalWindow title={metaTitle} contentClassName="flex flex-col gap-4">
+          <Field label="Slug">
+            <Input
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="auto"
+            />
           </Field>
 
-          <Collapsible>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="group/collapsible flex items-center gap-2 text-[10px] uppercase tracking-widest text-neutral-500 transition-colors hover:text-amber-400"
-              >
-                <ChevronDownIcon className="size-3.5 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                Дополнительные параметры
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4 flex flex-col gap-4">
-              <Field label="Slug (необязательно — генерируется из названия)">
-                <input
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  placeholder="auto"
-                  className={inputClassName}
-                />
-              </Field>
-              <Field label="Доступ для организаций (UUID через запятую)">
-                <input
-                  value={visibilityOrgs}
-                  onChange={(e) => setVisibilityOrgs(e.target.value)}
-                  className={inputClassName}
-                />
-              </Field>
-              <Field label="Дополнительные свойства (YAML)">
-                <textarea
-                  value={extraYaml}
-                  onChange={(e) => setExtraYaml(e.target.value)}
-                  rows={4}
-                  placeholder={"discord_role_id: \"...\"\nfaction: \"...\""}
-                  className={`${inputClassName} font-mono`}
-                />
-              </Field>
-            </CollapsibleContent>
-          </Collapsible>
-        </CardContent>
+          <Field label="Баннер (URL)">
+            <Input
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              placeholder="https://..."
+            />
+          </Field>
 
-        <CardFooter className="flex items-center justify-end gap-3 rounded-none border-t border-border bg-transparent px-6 py-4">
-          {error ? <p className="mr-auto text-sm text-red-400">[ERROR]: {error}</p> : null}
-          <Button type="submit" disabled={submitting} className="px-6 tracking-widest">
-            {submitting ? "СОХРАНЕНИЕ..." : mode === "create" ? "[ СОЗДАТЬ ЗАПИСЬ ]" : "[ СОХРАНИТЬ ]"}
-          </Button>
-        </CardFooter>
-      </Card>
+          <Field label="Теги">
+            <Combobox
+              multiple
+              items={tags}
+              value={tags}
+              onValueChange={setTags}
+              inputValue={tagDraft}
+              onInputValueChange={setTagDraft}
+            >
+              <ComboboxChips>
+                {tags.map((tag) => (
+                  <ComboboxChip key={tag}>{tag}</ComboboxChip>
+                ))}
+                <ComboboxChipsInput
+                  onKeyDown={handleTagKeyDown}
+                  onBlur={commitTagDraft}
+                  placeholder={tags.length === 0 ? "Добавить тег..." : undefined}
+                />
+              </ComboboxChips>
+            </Combobox>
+          </Field>
+
+          <Field label="Уровень доступа">
+            <Select value={visibility} onValueChange={(value) => setVisibility(value as Visibility)}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {VISIBILITY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className={cn("text-xs uppercase tracking-widest", VISIBILITY_META[visibility].className)}>
+              {VISIBILITY_META[visibility].label}
+            </p>
+          </Field>
+
+          {visibility === "restricted" ? (
+            <Field label="Доступ для организаций (UUID через запятую)">
+              <Input value={visibilityOrgs} onChange={(e) => setVisibilityOrgs(e.target.value)} />
+            </Field>
+          ) : null}
+
+          <Field label="Frontmatter (YAML)" className="flex-1">
+            <Textarea
+              value={extraYaml}
+              onChange={(e) => setExtraYaml(e.target.value)}
+              placeholder={"date: 2187-03-14\nfaction: \"...\""}
+              className="min-h-40 font-mono"
+            />
+          </Field>
+        </TerminalWindow>
+      </div>
+
+      <div className="flex items-center justify-end gap-3">
+        {error ? <p className="mr-auto text-sm text-red-400">[ERROR]: {error}</p> : null}
+        <Button type="submit" disabled={submitting} className="px-6 tracking-widest">
+          {submitting ? "СОХРАНЕНИЕ..." : mode === "create" ? "[ СОЗДАТЬ ЗАПИСЬ ]" : "[ СОХРАНИТЬ ]"}
+        </Button>
+      </div>
     </form>
   )
 }

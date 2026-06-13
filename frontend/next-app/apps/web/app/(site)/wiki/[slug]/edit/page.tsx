@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation"
 
+import { TerminalWindow } from "@workspace/ui/components/terminal-window"
+
 import { DeleteEntryDialog } from "@/components/delete-entry-dialog"
 import { EntryForm } from "@/components/entry-form"
-import { HudPanel } from "@/components/hud-panel"
 import { serverFetch } from "@/lib/api/server"
 import type { EntryRead, MeResponse } from "@/lib/api/types"
 
@@ -24,11 +25,11 @@ export default async function EditEntryPage({
   const canEdit = user?.global_role === "editor" || user?.global_role === "admin"
   if (!canEdit) {
     return (
-      <HudPanel label="ACCESS DENIED" className="mx-auto max-w-xl text-center">
+      <TerminalWindow title="ACCESS DENIED" className="mx-auto max-w-xl text-center">
         <p className="text-red-400">
           [WARNING]: Недостаточный уровень допуска для редактирования записей.
         </p>
-      </HudPanel>
+      </TerminalWindow>
     )
   }
 
