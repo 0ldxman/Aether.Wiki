@@ -5,6 +5,7 @@ import httpx
 from app.config import settings
 
 DISCORD_API = "https://discord.com/api/v10"
+DISCORD_AUTHORIZE_URL = "https://discord.com/oauth2/authorize"
 SCOPES = "identify guilds.members.read"
 
 
@@ -16,7 +17,7 @@ def build_authorize_url(state: str) -> str:
         "scope": SCOPES,
         "state": state,
     }
-    return f"{DISCORD_API}/oauth2/authorize?{urlencode(params)}"
+    return f"{DISCORD_AUTHORIZE_URL}?{urlencode(params)}"
 
 
 async def exchange_code(code: str) -> dict:
